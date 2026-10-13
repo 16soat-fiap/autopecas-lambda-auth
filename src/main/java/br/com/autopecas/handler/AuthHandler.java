@@ -15,8 +15,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.time.Clock;
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Base64;
@@ -26,23 +24,36 @@ import java.nio.charset.StandardCharsets;
 public class AuthHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final Duration VALIDADE_TOKEN = Duration.ofMinutes(30);
 
     private final AuthService service;
+    private final TokenService tokens;
 
-    /** Usado pelo runtime da Lambda: monta as dependências a partir das variáveis de ambiente. */
     public AuthHandler() {
-        this(new AuthService(
-            JdbcClienteRepository.fromEnv(),
-            new TokenService(System.getenv("JWT_SECRET"), VALIDADE_TOKEN, Clock.systemUTC())));
+        this(TokenService.fromEnv());
     }
 
-    AuthHandler(AuthService service) {
+    private AuthHandler(TokenService tokens) {
+        this(new AuthService(JdbcClienteRepository.fromEnv(), tokens), tokens);
+    }
+
+    AuthHandler(AuthService service, TokenService tokens) {
         this.service = service;
+        this.tokens = tokens;
     }
 
     @Override
     public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent event, Context context) {
+        if (event != null) {
+            if ("GET /.well-known/openid-configuration".equals(event.getRouteKey())) {
+                return resposta(200, tokens.discovery());
+            }
+            if ("GET /.well-known/jwks.json".equals(event.getRouteKey())) {
+                return resposta(200, tokens.jwks());
+            }
+            if (event.getRouteKey() != null && !"POST /auth".equals(event.getRouteKey())) {
+                return resposta(404, Map.of("erro", "Rota inexistente"));
+            }
+        }
         String requestId = context == null ? null : context.getAwsRequestId();
         String corpo = event == null ? null : event.getBody();
         if (event != null && Boolean.TRUE.equals(event.getIsBase64Encoded()) && corpo != null) {

@@ -1,6 +1,6 @@
 # autopecas-lambda-auth
 
-Autenticação de clientes por CPF/CNPJ, com Java 21, PostgreSQL e JWT HS256.
+Autenticação de clientes por CPF/CNPJ, com Java 21, PostgreSQL e JWT RS256.
 
 ## Estrutura do código
 
@@ -23,7 +23,7 @@ Execute com Java 21 e Maven:
 
     mvn clean verify
 
-O artefato para ambas as funções é `target/autopecas-lambda.jar`, com as dependências.
+O artefato da função é `target/autopecas-lambda.jar`, com as dependências.
 Os seis testes JDBC só são executados quando DB_URL está definida e exigem banco com
 schema e clientes de teste preparados. O build sem banco não valida as consultas.
 
@@ -71,7 +71,10 @@ e [imagem oficial PostgreSQL](https://hub.docker.com/_/postgres).
 Handler: `br.com.autopecas.handler.AuthHandler::handleRequest`.
 
 Variáveis obrigatórias: DB_URL (jdbc:postgresql://host:5432/autopecas),
-DB_USER, DB_PASSWORD e JWT_SECRET (segredo aleatório, com pelo menos 32 caracteres).
+DB_USER, DB_PASSWORD, JWT_PRIVATE_KEY (chave RSA privada PKCS#8 em Base64),
+JWT_ISSUER (URL HTTPS do emissor) e JWT_AUDIENCE (identificador da API).
+A chave deve ter pelo menos 2048 bits e nunca deve ser versionada.
+Veja a geração da chave e o deploy em [terraform](terraform/README.md).
 O repositório consulta clientes, clientes_pf e clientes_pj;
 os documentos devem estar normalizados, sem pontuação, com letras maiúsculas no CNPJ.
 A configuração JDBC usa connectTimeout=5 e socketTimeout=10 segundos como padrões
@@ -93,26 +96,49 @@ POST /auth, payload HTTP API 2.0:
 Corpos Base64 são decodificados quando isBase64Encoded=true.
 Logs de autenticação contêm requestId e resultado, sem documento ou token.
 
-## Lambda authorizer
+## Valida??o nativa no API Gateway
 
-Handler: `br.com.autopecas.handler.AuthorizerHandler::handleRequest`.
-Requer somente JWT_SECRET, igual ao da função de autenticação; não acessa o banco.
+Existe somente uma Lambda: ela autentica e emite tokens RS256. O API Gateway
+usa um authorizer JWT nativo para validar assinatura, issuer, audience,
+expira??o e o escopo `api:access` exigido nas rotas protegidas.
 
-Na futura configuração do HTTP API Gateway:
+A mesma Lambda atende duas rotas p?blicas de metadados, sem consultar o banco:
 
-- Usar authorizer REQUEST, payload 2.0 e enableSimpleResponses=true.
-- Usar identity source `$request.header.Authorization`.
-- Configurar authorizerResultTtlInSeconds=0 para desativar o cache.
-- Manter POST /auth público e associar o authorizer às rotas protegidas.
+- `GET /.well-known/openid-configuration`: issuer e endere?o do JWKS.
+- `GET /.well-known/jwks.json`: chave p?blica RSA, com `kid`, `n` e `e`.
 
-Enviar `Authorization: Bearer <JWT>`. A resposta usa isAuthorized e context,
-com clienteId e tipo (PF/PJ) quando autorizado; a integração Lambda recebe
-esses campos em requestContext.authorizer.lambda.
-Headers ambíguos, tokens inválidos e claims ausentes são negados.
-A validação exige HS256, issuer autopecas-auth, sub não vazio, iat, exp e tipo PF/PJ.
-O mesmo relógio é usado na emissão e validação, permitindo testes determinísticos.
-A resposta do authorizer é uma decisão de acesso, não uma resposta HTTP;
-o API Gateway determina o status HTTP da rejeição.
+O issuer inclui o stage do ambiente, por exemplo
+`https://<api-id>.execute-api.us-east-1.amazonaws.com/homologacao`.
+Os metadados fornecem descoberta para o gateway; n?o implementam um servidor
+OAuth/OIDC completo nem exigem Cognito. A chave privada nunca aparece no JWKS.
+O header `kid` identifica a chave, enquanto `aud` identifica a API de destino.
 
-Contrato AWS:
-https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-lambda-authorizer.html
+Envie `Authorization: Bearer <JWT>` nas rotas protegidas. Nas integra??es
+Lambda, as claims ficam em `requestContext.authorizer.jwt.claims`.
+Na integra??o HTTP, a aplica??o recebe o token no header Authorization;
+n?o h? contexto do antigo authorizer Lambda.
+O gateway n?o verifica o status atual do cliente nem aplica regras de neg?cio
+de acesso aos recursos; essas regras continuam na aplica??o.
+
+Tokens HS256 antigos deixam de ser aceitos: os clientes precisam autenticar
+novamente. A segunda Lambda authorizer foi removida.
+
+Refer?ncia: [JWT authorizers no API Gateway](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html).
+
+## Limita??es
+
+Os tokens expiram em 30 minutos. Desativar um cliente bloqueia novas emiss?es,
+mas tokens existentes continuam v?lidos at? expirar. N?o h? revoga??o imediata.
+O gateway pode manter chaves p?blicas em cache por at? duas horas.
+A implementa??o publica uma chave por vez; uma rota??o sem interrup??o
+exigir? publicar chaves antigas e novas simultaneamente durante a transi??o.
+
+Autenticar apenas por documento n?o comprova posse da identidade. As respostas
+401/403 permitem inferir cadastro e status. O uso real exigiria prova adicional
+de identidade e controle de tentativas.
+
+## Infraestrutura AWS
+
+O Terraform da Lambda e do API Gateway está em [terraform](terraform/README.md),
+com configurações separadas para homologação e produção no AWS Academy Learner Lab.
+O deploy depende da role existente, rede e banco configurados.

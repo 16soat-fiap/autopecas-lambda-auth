@@ -4,6 +4,7 @@ import br.com.autopecas.application.AuthService;
 import br.com.autopecas.domain.Cliente;
 import br.com.autopecas.domain.ClienteRepository;
 import br.com.autopecas.infrastructure.security.TokenService;
+import br.com.autopecas.infrastructure.security.TestTokens;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -21,11 +22,10 @@ import static org.junit.jupiter.api.Assertions.*;
 class AuthHandlerTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private static final String SEGREDO = "segredo-de-teste-com-mais-de-32-caracteres!!";
 
     private AuthHandler handlerCom(ClienteRepository repo) {
-        var tokens = new TokenService(SEGREDO, Duration.ofMinutes(30), Clock.systemUTC());
-        return new AuthHandler(new AuthService(repo, tokens));
+        var tokens = TestTokens.criar(Clock.systemUTC());
+        return new AuthHandler(new AuthService(repo, tokens), tokens);
     }
 
     private static String corpo(String documento) {
@@ -85,13 +85,13 @@ class AuthHandlerTest {
     @ParameterizedTest
     @ValueSource(strings = {"null", "[]", "123", "true", "{\"documento\":123}", "{\"documento\":null}"})
     void corpoInvalidoRetorna400SemConsultarBanco(String corpo) {
-        var auth = new AuthHandler(new AuthService(d -> { throw new AssertionError("Banco não deve ser consultado"); }, new TokenService(SEGREDO, Duration.ofMinutes(30), Clock.systemUTC())));
+        var auth = handlerCom(d -> { throw new AssertionError("Banco nao deve ser consultado"); });
         assertEquals(400, auth.processar(corpo, "request-1").getStatusCode());
     }
 
     @Test
     void aceitaBase64ERejeitaBase64Invalido() {
-        var auth = new AuthHandler(new AuthService(d -> Optional.of(new Cliente("id", true)), new TokenService(SEGREDO, Duration.ofMinutes(30), Clock.systemUTC())));
+        var auth = handlerCom(d -> Optional.of(new Cliente("id", true)));
         var event = new APIGatewayV2HTTPEvent();
         event.setIsBase64Encoded(true);
         event.setBody(Base64.getEncoder().encodeToString("{\"documento\":\"52998224725\"}".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
@@ -99,5 +99,34 @@ class AuthHandlerTest {
         event.setBody("%%%");
         assertEquals(400, auth.handleRequest(event, null).getStatusCode());
         assertEquals(400, auth.handleRequest(null, null).getStatusCode());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"GET /.well-known/openid-configuration", "GET /.well-known/jwks.json"})
+    void publicaMetadadosSemConsultarBanco(String route) throws Exception {
+        var tokens = TestTokens.criar(Clock.systemUTC());
+        var handler = new AuthHandler(new AuthService(d -> {
+            throw new AssertionError("Metadados nao consultam o banco");
+        }, tokens), tokens);
+        var event = new APIGatewayV2HTTPEvent();
+        event.setRouteKey(route);
+        var response = handler.handleRequest(event, null);
+        assertEquals(200, response.getStatusCode());
+        var body = MAPPER.readTree(response.getBody());
+        if (route.endsWith("openid-configuration")) {
+            assertEquals(TestTokens.ISSUER, body.path("issuer").asText());
+            assertEquals(TestTokens.ISSUER + "/.well-known/jwks.json", body.path("jwks_uri").asText());
+        } else {
+            assertEquals("RSA", body.path("keys").get(0).path("kty").asText());
+            assertFalse(body.path("keys").get(0).has("d"));
+        }
+        assertFalse(response.getBody().contains(TestTokens.PRIVATE_KEY));
+    }
+
+    @Test
+    void rejeitaRotaDesconhecida() {
+        var event = new APIGatewayV2HTTPEvent();
+        event.setRouteKey("GET /auth");
+        assertEquals(404, handlerCom(d -> { throw new AssertionError(); }).handleRequest(event, null).getStatusCode());
     }
 }
