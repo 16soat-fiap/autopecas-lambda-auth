@@ -1,4 +1,11 @@
-package br.com.autopecas;
+package br.com.autopecas.handler;
+
+import br.com.autopecas.application.AuthService;
+import br.com.autopecas.application.ResultadoAuth;
+import br.com.autopecas.domain.Cliente;
+import br.com.autopecas.domain.Documento;
+import br.com.autopecas.infrastructure.persistence.JdbcClienteRepository;
+import br.com.autopecas.infrastructure.security.TokenService;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;

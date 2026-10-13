@@ -2,6 +2,21 @@
 
 Autenticação de clientes por CPF/CNPJ, com Java 21, PostgreSQL e JWT HS256.
 
+## Estrutura do código
+
+Os testes em `src/test/java` espelham os pacotes de `src/main/java`:
+
+| Pacote em `br.com.autopecas` | Responsabilidade |
+| --- | --- |
+| `domain` | Cliente, documento e contrato do repositório |
+| `domain.validation` | Validadores de CPF e CNPJ |
+| `application` | Fluxo e resultados da autenticação |
+| `infrastructure.persistence` | Consulta JDBC ao PostgreSQL |
+| `infrastructure.security` | Emissão e validação de JWT |
+| `handler` | Entradas e respostas das Lambdas |
+
+As fixtures SQL ficam em `src/test/resources/db`.
+
 ## Execução e artefato
 
 Execute com Java 21 e Maven:
@@ -53,7 +68,7 @@ e [imagem oficial PostgreSQL](https://hub.docker.com/_/postgres).
 
 ## Lambda de autenticação
 
-Handler: `br.com.autopecas.AuthHandler::handleRequest`.
+Handler: `br.com.autopecas.handler.AuthHandler::handleRequest`.
 
 Variáveis obrigatórias: DB_URL (jdbc:postgresql://host:5432/autopecas),
 DB_USER, DB_PASSWORD e JWT_SECRET (segredo aleatório, com pelo menos 32 caracteres).
@@ -80,7 +95,7 @@ Logs de autenticação contêm requestId e resultado, sem documento ou token.
 
 ## Lambda authorizer
 
-Handler: `br.com.autopecas.AuthorizerHandler::handleRequest`.
+Handler: `br.com.autopecas.handler.AuthorizerHandler::handleRequest`.
 Requer somente JWT_SECRET, igual ao da função de autenticação; não acessa o banco.
 
 Na futura configuração do HTTP API Gateway:

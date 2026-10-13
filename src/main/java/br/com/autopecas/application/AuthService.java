@@ -1,4 +1,9 @@
-package br.com.autopecas;
+package br.com.autopecas.application;
+
+import br.com.autopecas.domain.Cliente;
+import br.com.autopecas.domain.ClienteRepository;
+import br.com.autopecas.domain.Documento;
+import br.com.autopecas.infrastructure.security.TokenService;
 
 import java.util.Optional;
 

@@ -1,4 +1,8 @@
-package br.com.autopecas;
+package br.com.autopecas.infrastructure.persistence;
+
+import br.com.autopecas.domain.Cliente;
+import br.com.autopecas.domain.ClienteRepository;
+import br.com.autopecas.domain.Documento;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

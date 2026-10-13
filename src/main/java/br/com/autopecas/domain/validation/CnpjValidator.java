@@ -1,4 +1,4 @@
-package br.com.autopecas;
+package br.com.autopecas.domain.validation;
 
 import java.util.Locale;
 

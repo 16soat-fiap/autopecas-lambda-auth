@@ -1,4 +1,7 @@
-package br.com.autopecas;
+package br.com.autopecas.domain;
+
+import br.com.autopecas.domain.validation.CnpjValidator;
+import br.com.autopecas.domain.validation.CpfValidator;
 
 import java.util.Optional;
 

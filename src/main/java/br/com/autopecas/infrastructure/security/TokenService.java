@@ -1,4 +1,7 @@
-package br.com.autopecas;
+package br.com.autopecas.infrastructure.security;
+
+import br.com.autopecas.domain.Cliente;
+import br.com.autopecas.domain.Documento;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;

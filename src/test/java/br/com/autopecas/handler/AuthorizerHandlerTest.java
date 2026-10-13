@@ -1,4 +1,9 @@
-package br.com.autopecas;
+package br.com.autopecas.handler;
+
+import br.com.autopecas.domain.Cliente;
+import br.com.autopecas.domain.Documento;
+import br.com.autopecas.infrastructure.persistence.JdbcClienteRepository;
+import br.com.autopecas.infrastructure.security.TokenService;
 
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2CustomAuthorizerEvent;
 import com.auth0.jwt.JWT;

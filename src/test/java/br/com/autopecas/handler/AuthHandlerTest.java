@@ -1,4 +1,9 @@
-package br.com.autopecas;
+package br.com.autopecas.handler;
+
+import br.com.autopecas.application.AuthService;
+import br.com.autopecas.domain.Cliente;
+import br.com.autopecas.domain.ClienteRepository;
+import br.com.autopecas.infrastructure.security.TokenService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;

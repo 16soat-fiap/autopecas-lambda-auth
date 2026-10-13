@@ -1,4 +1,4 @@
-package br.com.autopecas;
+package br.com.autopecas.domain;
 
 import org.junit.jupiter.api.Test;
 

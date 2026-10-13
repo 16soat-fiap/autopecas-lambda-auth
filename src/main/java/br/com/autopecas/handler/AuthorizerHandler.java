@@ -1,4 +1,6 @@
-package br.com.autopecas;
+package br.com.autopecas.handler;
+
+import br.com.autopecas.infrastructure.security.TokenService;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;

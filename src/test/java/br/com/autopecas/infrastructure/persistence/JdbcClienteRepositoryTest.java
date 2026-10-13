@@ -1,4 +1,8 @@
-package br.com.autopecas;
+package br.com.autopecas.infrastructure.persistence;
+
+import br.com.autopecas.domain.Cliente;
+import br.com.autopecas.domain.ClienteRepository;
+import br.com.autopecas.domain.Documento;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;

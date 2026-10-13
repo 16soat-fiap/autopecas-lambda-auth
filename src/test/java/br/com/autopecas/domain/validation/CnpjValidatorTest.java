@@ -1,4 +1,4 @@
-package br.com.autopecas;
+package br.com.autopecas.domain.validation;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;

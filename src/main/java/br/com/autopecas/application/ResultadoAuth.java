@@ -1,4 +1,4 @@
-package br.com.autopecas;
+package br.com.autopecas.application;
 
 /** Desfechos possíveis de uma tentativa de autenticação. */
 public sealed interface ResultadoAuth {

@@ -53,7 +53,7 @@ export DB_PASSWORD=autopecas_test
 mvn -B -ntp clean verify
 
 # Evita sucesso silencioso se os testes JDBC forem ignorados.
-report=target/surefire-reports/TEST-br.com.autopecas.JdbcClienteRepositoryTest.xml
+report=target/surefire-reports/TEST-br.com.autopecas.infrastructure.persistence.JdbcClienteRepositoryTest.xml
 if [[ ! -f "$report" ]] ||
    ! grep -Eq 'tests="6"' "$report" ||
    ! grep -Eq 'skipped="0"' "$report"; then
