@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Optional;
+import java.util.Properties;
 
 public class JdbcClienteRepository implements ClienteRepository {
 
@@ -28,6 +29,10 @@ public class JdbcClienteRepository implements ClienteRepository {
     private final String password;
 
     public JdbcClienteRepository(String url, String user, String password) {
+        if (url == null || !url.startsWith("jdbc:postgresql://") || user == null || user.isBlank()
+                || password == null || password.isBlank()) {
+            throw new IllegalArgumentException("DB_URL PostgreSQL, DB_USER e DB_PASSWORD são obrigatórios");
+        }
         this.url = url;
         this.user = user;
         this.password = password;
@@ -48,16 +53,22 @@ public class JdbcClienteRepository implements ClienteRepository {
             case CNPJ -> SQL_PJ;
         };
 
-        try (Connection con = DriverManager.getConnection(url, user, password);
+        Properties propriedades = new Properties();
+        propriedades.setProperty("user", user);
+        propriedades.setProperty("password", password);
+        propriedades.setProperty("connectTimeout", "5");
+        propriedades.setProperty("socketTimeout", "10");
+        try (Connection con = DriverManager.getConnection(url, propriedades);
              PreparedStatement ps = con.prepareStatement(sql)) {
 
+            ps.setQueryTimeout(5);
             ps.setString(1, documento.valor());
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return Optional.empty();
                 return Optional.of(new Cliente(rs.getString("id"), rs.getBoolean("ativo")));
             }
         } catch (SQLException e) {
-            // Não inclua o documento na mensagem: é dado pessoal e iria para o log.
+            // Não inclua o documento na mensagem: ? dado pessoal e iria para o log.
             throw new IllegalStateException("Falha ao consultar cliente no banco", e);
         }
     }
