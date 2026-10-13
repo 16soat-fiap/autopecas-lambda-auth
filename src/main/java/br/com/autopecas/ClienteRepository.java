@@ -4,6 +4,6 @@ import java.util.Optional;
 
 public interface ClienteRepository {
 
-    /** Recebe o CPF só com dígitos (use CpfValidator.normalize antes). */
-    Optional<Cliente> buscarPorCpf(String cpf);
+    /** Procura o cliente pelo documento já validado e normalizado. */
+    Optional<Cliente> buscarPorDocumento(Documento documento);
 }

@@ -9,7 +9,19 @@ import java.util.Optional;
 
 public class JdbcClienteRepository implements ClienteRepository {
 
-    private static final String SQL = "SELECT id, status FROM clientes WHERE cpf = ?";
+    private static final String SQL_PF = """
+        SELECT c.id, c.ativo
+          FROM clientes c
+          JOIN clientes_pf pf ON pf.id = c.id
+         WHERE pf.cpf = ?
+        """;
+
+    private static final String SQL_PJ = """
+        SELECT c.id, c.ativo
+          FROM clientes c
+          JOIN clientes_pj pj ON pj.id = c.id
+         WHERE pj.cnpj = ?
+        """;
 
     private final String url;
     private final String user;
@@ -30,17 +42,22 @@ public class JdbcClienteRepository implements ClienteRepository {
     }
 
     @Override
-    public Optional<Cliente> buscarPorCpf(String cpf) {
-        try (Connection con = DriverManager.getConnection(url, user, password);
-             PreparedStatement ps = con.prepareStatement(SQL)) {
+    public Optional<Cliente> buscarPorDocumento(Documento documento) {
+        String sql = switch (documento.tipo()) {
+            case CPF -> SQL_PF;
+            case CNPJ -> SQL_PJ;
+        };
 
-            ps.setString(1, cpf);
+        try (Connection con = DriverManager.getConnection(url, user, password);
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, documento.valor());
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) return Optional.empty();
-                return Optional.of(new Cliente(rs.getString("id"), rs.getString("status")));
+                return Optional.of(new Cliente(rs.getString("id"), rs.getBoolean("ativo")));
             }
         } catch (SQLException e) {
-            // Não inclua o CPF na mensagem: é dado pessoal e iria para o log.
+            // Não inclua o documento na mensagem: é dado pessoal e iria para o log.
             throw new IllegalStateException("Falha ao consultar cliente no banco", e);
         }
     }
