@@ -83,3 +83,53 @@ run "reject_discovery_override" {
   }
   expect_failures = [var.protected_routes]
 }
+
+
+run "application_route_catalog" {
+  command = plan
+  variables {
+    application_url  = "https://application.example.com"
+    protected_routes = jsondecode(file("routes/application.json")).protected_routes
+  }
+
+  assert {
+    condition     = length(aws_apigatewayv2_route.protected) == 44
+    error_message = "O catalogo deve mapear os 44 endpoints revisados da aplicacao."
+  }
+  assert {
+    condition     = alltrue([for route in aws_apigatewayv2_route.protected : route.authorization_type == "JWT" && contains(route.authorization_scopes, "api:access")])
+    error_message = "Nenhuma rota do catalogo pode ser publicada sem JWT e escopo api:access."
+  }
+  assert {
+    condition     = contains(keys(aws_apigatewayv2_route.protected), "GET /api/ordens-servico") && contains(keys(aws_apigatewayv2_route.protected), "PATCH /api/ordens-servico/{osId}/orcamentos/{id}/aprovar")
+    error_message = "Mapear tambem as colecoes e operacoes de orcamentos aninhadas."
+  }
+  assert {
+    condition     = aws_apigatewayv2_integration.application[0].request_parameters["overwrite:path"] == "$request.path"
+    error_message = "Preservar o caminho da aplicacao sem prefixar o stage."
+  }
+}
+
+run "catalog_requires_upstream" {
+  command = plan
+  variables {
+    protected_routes = jsondecode(file("routes/application.json")).protected_routes
+  }
+  expect_failures = [aws_apigatewayv2_integration.application]
+}
+
+run "staff_login_stays_public" {
+  command = plan
+  assert {
+    condition     = aws_apigatewayv2_route.staff_auth.authorization_type == "NONE" && aws_lambda_permission.staff_auth.action == "lambda:InvokeFunction"
+    error_message = "Login de funcionarios precisa invocar a mesma Lambda sem JWT previo."
+  }
+}
+run "reject_staff_auth_override" {
+  command = plan
+  variables {
+    application_url  = "https://application.example.com"
+    protected_routes = ["POST /auth/funcionarios"]
+  }
+  expect_failures = [var.protected_routes]
+}

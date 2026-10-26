@@ -10,4 +10,4 @@ db_user                   = "lambda_auth"
 
 # Habilite quando o ingresso Kubernetes estiver disponivel.
 # application_url = "https://api.exemplo.com"
-# protected_routes = ["GET /ordens-servico", "POST /ordens-servico", "ANY /ordens-servico/{proxy+}"]
+# Carregue as rotas reais com -var-file=routes/application.json; veja docs/rotas-api-gateway.md.

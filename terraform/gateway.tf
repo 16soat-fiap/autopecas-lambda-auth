@@ -9,6 +9,9 @@ resource "aws_cloudwatch_log_group" "gateway" {
 }
 
 resource "aws_apigatewayv2_stage" "this" {
+  # Route settings can only reference routes already created in API Gateway.
+  depends_on = [aws_apigatewayv2_route.staff_auth]
+
   api_id      = aws_apigatewayv2_api.this.id
   name        = var.environment
   auto_deploy = true
@@ -16,6 +19,12 @@ resource "aws_apigatewayv2_stage" "this" {
   default_route_settings {
     throttling_burst_limit = 20
     throttling_rate_limit  = 10
+  }
+
+  route_settings {
+    route_key              = "POST /auth/funcionarios"
+    throttling_burst_limit = 5
+    throttling_rate_limit  = 2
   }
 
   access_log_settings {
@@ -44,6 +53,21 @@ resource "aws_apigatewayv2_route" "auth" {
   route_key          = "POST /auth"
   authorization_type = "NONE"
   target             = "integrations/${aws_apigatewayv2_integration.auth.id}"
+}
+
+resource "aws_apigatewayv2_route" "staff_auth" {
+  api_id             = aws_apigatewayv2_api.this.id
+  route_key          = "POST /auth/funcionarios"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.auth.id}"
+}
+
+resource "aws_lambda_permission" "staff_auth" {
+  statement_id  = "AllowGatewayStaffAuth"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.auth.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.this.execution_arn}/${var.environment}/POST/auth/funcionarios"
 }
 
 resource "aws_lambda_permission" "auth" {
@@ -78,6 +102,28 @@ resource "aws_lambda_permission" "discovery" {
   source_arn    = "${aws_apigatewayv2_api.this.execution_arn}/${var.environment}/GET${each.value}"
 }
 
+resource "terraform_data" "discovery_ready" {
+  triggers_replace = [
+    local.issuer,
+    aws_lambda_function.auth.source_code_hash,
+    filesha256("${path.module}/../scripts/wait-for-jwks.py")
+  ]
+
+  provisioner "local-exec" {
+    command     = "python3 ../scripts/wait-for-jwks.py"
+    working_dir = path.module
+    environment = {
+      JWT_ISSUER_URL = local.issuer
+    }
+  }
+
+  depends_on = [
+    aws_apigatewayv2_route.discovery,
+    aws_lambda_permission.discovery,
+    aws_apigatewayv2_stage.this
+  ]
+}
+
 resource "aws_apigatewayv2_authorizer" "jwt" {
   api_id           = aws_apigatewayv2_api.this.id
   name             = "jwt"
@@ -89,12 +135,7 @@ resource "aws_apigatewayv2_authorizer" "jwt" {
     audience = [var.jwt_audience]
   }
 
-  # Publicacao dos metadados antes de configurar sua descoberta pelo gateway.
-  depends_on = [
-    aws_apigatewayv2_route.discovery,
-    aws_lambda_permission.discovery,
-    aws_apigatewayv2_stage.this
-  ]
+  depends_on = [terraform_data.discovery_ready]
 }
 
 resource "aws_apigatewayv2_integration" "application" {

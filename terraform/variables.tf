@@ -94,14 +94,14 @@ variable "application_url" {
 }
 
 variable "protected_routes" {
-  description = "Rotas explicitas da aplicacao, por exemplo GET /ordens-servico e ANY /ordens-servico/{proxy+}."
+  description = "Rotas explicitas da aplicacao. Catalogo revisado em routes/application.json; nao e carregado automaticamente."
   type        = set(string)
   default     = []
   validation {
     condition = alltrue([
       for route in var.protected_routes :
       can(regex("^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|ANY) /[^ ]*$", route)) &&
-      !contains(["POST /auth", "ANY /auth", "ANY /{proxy+}", "ANY /"], route) &&
+      !contains(["POST /auth", "ANY /auth", "POST /auth/funcionarios", "ANY /auth/funcionarios", "ANY /{proxy+}", "ANY /"], route) &&
       !strcontains(route, "/.well-known")
     ])
     error_message = "Use rotas explicitas sem conflitar com POST /auth ou criar um proxy global."
