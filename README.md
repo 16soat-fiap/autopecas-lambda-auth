@@ -35,7 +35,7 @@ Confirme que docker compose version e docker info funcionam no mesmo terminal.
 
 O Docker Engine deve estar na mesma máquina em que o Maven executa, pois a
 conexão JDBC usa 127.0.0.1 e a fixture SQL é montada a partir do checkout local.
-Daemons Docker remotos não são suportados por esta configuração.
+Daemons Docker remotos não são suportados por está configuração.
 
 Na raiz do projeto, execute:
 
@@ -59,7 +59,7 @@ JOINED descrito no histórico. A correspondência com as entidades/migrations
 atuais da aplicação principal ainda precisa ser confirmada; ela não é uma migration.
 
 Para conferir o formato no banco da aplicação principal, execute o SQL somente
-de leitura em scripts/verificar-documentos.sql. As contagens total e normalizados devem coincidir.
+de leitura em scripts/verificar-documentos.sql. As contagens total é normalizados devem coincidir.
 Uma tabela vazia não comprova o formato dos dados. O SQL verifica o formato,
 não os dígitos verificadores, e não altera nem revela documentos completos.
 
@@ -74,7 +74,7 @@ Variáveis obrigatórias: DB_URL (jdbc:postgresql://host:5432/autopecas),
 DB_USER, DB_PASSWORD, JWT_PRIVATE_KEY (chave RSA privada PKCS#8 em Base64),
 JWT_ISSUER (URL HTTPS do emissor) e JWT_AUDIENCE (identificador da API).
 A chave deve ter pelo menos 2048 bits e nunca deve ser versionada.
-Veja a geração da chave e o deploy em [terraform](terraform/README.md).
+Veja a geração da chave é o deploy em [terraform](terraform/README.md).
 O repositório consulta clientes, clientes_pf e clientes_pj;
 os documentos devem estar normalizados, sem pontuação, com letras maiúsculas no CNPJ.
 A configuração JDBC usa connectTimeout=5 e socketTimeout=10 segundos como padrões
@@ -100,7 +100,7 @@ Logs de autenticação contêm requestId e resultado, sem documento ou token.
 
 Existe somente uma Lambda: ela autentica e emite tokens RS256. O API Gateway
 usa um authorizer JWT nativo para validar assinatura, issuer, audience,
-expira??o e o escopo `api:access` exigido nas rotas protegidas.
+expira??o é o escopo `api:access` exigido nas rotas protegidas.
 
 A mesma Lambda atende duas rotas p?blicas de metadados, sem consultar o banco:
 
@@ -130,7 +130,7 @@ Refer?ncia: [JWT authorizers no API Gateway](https://docs.aws.amazon.com/apigate
 Os tokens expiram em 30 minutos. Desativar um cliente bloqueia novas emiss?es,
 mas tokens existentes continuam v?lidos at? expirar. N?o h? revoga??o imediata.
 O gateway pode manter chaves p?blicas em cache por at? duas horas.
-A implementa??o publica uma chave por vez; uma rota??o sem interrup??o
+A implementa??o pública uma chave por vez; uma rota??o sem interrup??o
 exigir? publicar chaves antigas e novas simultaneamente durante a transi??o.
 
 Autenticar apenas por documento n?o comprova posse da identidade. As respostas
@@ -142,3 +142,27 @@ de identidade e controle de tentativas.
 O Terraform da Lambda e do API Gateway está em [terraform](terraform/README.md),
 com configurações separadas para homologação e produção no AWS Academy Learner Lab.
 O deploy depende da role existente, rede e banco configurados.
+
+## Teste no Learner Lab
+
+O primeiro deploy de homologação e os testes na AWS estão registrados em
+[docs/lab-homologacao.md](docs/lab-homologacao.md). O uso das rotas depende
+do banco estar ativo; a integração Kubernetes ainda está pendente.
+
+## Rotas da aplicação
+
+O catálogo com 44 endpoints e as pendências de segurança para integrar
+o Kubernetes estão em [rotas do API Gateway](docs/rotas-api-gateway.md).
+As rotas ainda não foram aplicadas na AWS.
+
+## Login de funcionários
+
+O novo fluxo POST /auth/funcionarios, o login por CPF e a migração
+sem Keycloak estão documentados em [login de funcionários](docs/login-funcionarios.md).
+A implementação ainda não foi aplicada na AWS.
+
+## Validação AWS do login por CPF
+
+A Lambda e o Gateway foram publicados e validados no Learner Lab em 25/10/2026.
+Os resultados, os endpoints e as pendências de integração com Kubernetes
+estão em [validação AWS](docs/validacao-aws-cpf.md).

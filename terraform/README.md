@@ -16,14 +16,14 @@ flowchart LR
   V -->|RS256 e escopo api:access| K[Aplica??o Kubernetes]
 ~~~
 
-A mesma Lambda publica metadados de descoberta e sua chave p?blica.
+A mesma Lambda pública metadados de descoberta e sua chave p?blica.
 Somente POST /auth consulta o banco. O issuer ? a URL do gateway incluindo o
 stage. Terraform usa essa mesma URL na Lambda e no authorizer, sem c?pia manual.
 As rotas de descoberta s?o publicadas antes da cria??o do authorizer.
 
 ## Pr?-requisitos
 
-- Java 21, Maven e Terraform >= 1.10 e < 2.0; OpenSSL para gerar a chave RSA.
+- Java 21, Maven, Python 3 e Terraform >= 1.10 e < 2.0; OpenSSL para gerar a chave RSA.
 - Sess?o ativa do Learner Lab e credenciais tempor?rias AWS_ACCESS_KEY_ID,
   AWS_SECRET_ACCESS_KEY e AWS_SESSION_TOKEN.
 - Role existente (por exemplo LabRole), com trust para Lambda, permiss?es de logs
@@ -126,14 +126,14 @@ o contexto do antigo authorizer Lambda n?o existe mais.
 Tokens duram 30 minutos; desativa??o de cliente n?o revoga tokens emitidos.
 Tokens HS256 antigos n?o s?o aceitos; autentique novamente ap?s a migra??o.
 O gateway pode guardar chaves p?blicas em cache por at? duas horas.
-Esta implementa??o publica uma chave por vez. Trocar a chave imediatamente
+Esta implementa??o pública uma chave por vez. Trocar a chave imediatamente
 pode interromper acessos, inclusive tokens novos enquanto a chave est? em cache.
 Rota??o sem interrup??o exige suporte a sobreposi??o de chaves no JWKS
 durante a transi??o; isso ainda n?o est? implementado.
 
 A infraestrutura anterior de duas Lambdas n?o foi aplicada. Caso tenha sido
 provisionada externamente, revise cuidadosamente a remo??o da fun??o antiga
-antes de aplicar esta configura??o.
+antes de aplicar está configura??o.
 
 Refer?ncia: [JWT authorizers na AWS](https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-jwt-authorizer.html).
 
@@ -142,3 +142,16 @@ Refer?ncia: [JWT authorizers na AWS](https://docs.aws.amazon.com/apigateway/late
 Confirmar recursos do Lab, validar um plano real, testar discovery/JWKS e fluxo
 protegido na AWS, criar CI/CD por PR para os dois ambientes e concluir
 correla??o de logs, RFC/ADR e especifica??o OpenAPI/Postman.
+
+## Rotas da aplicação
+
+O catálogo com 44 endpoints e as pendências de segurança para integrar
+o Kubernetes estão em [rotas do API Gateway](../docs/rotas-api-gateway.md).
+As rotas ainda não foram aplicadas na AWS.
+
+## Login de funcionários
+
+O novo fluxo POST /auth/funcionarios, o login por CPF e a migração
+sem Keycloak estão documentados em [login de funcionários](../docs/login-funcionarios.md).
+A Lambda e o Gateway foram atualizados e validados na AWS em 25/10/2026.
+Veja [resultados e limites](../docs/validacao-aws-cpf.md).
