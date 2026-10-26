@@ -4,6 +4,7 @@ import br.com.autopecas.domain.Cliente;
 import br.com.autopecas.domain.ClienteRepository;
 import br.com.autopecas.domain.Documento;
 import br.com.autopecas.infrastructure.security.TokenService;
+import br.com.autopecas.infrastructure.security.TestTokens;
 
 import org.junit.jupiter.api.Test;
 
@@ -16,9 +17,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class AuthServiceTest {
 
-    private static final String SEGREDO = "segredo-de-teste-com-mais-de-32-caracteres!!";
     private final TokenService tokens =
-        new TokenService(SEGREDO, Duration.ofMinutes(30), Clock.systemUTC());
+        TestTokens.criar(Clock.systemUTC());
 
     private AuthService servico(ClienteRepository repo) {
         return new AuthService(repo, tokens);

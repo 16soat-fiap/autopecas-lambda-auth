@@ -1,0 +1,13 @@
+environment = "producao"
+region      = "us-east-1"
+
+# Substitua pelos outputs reais de rede e pela role existente no Lab.
+lambda_execution_role_arn  = "arn:aws:iam::123456789012:role/LabRole"
+lambda_subnet_ids          = ["subnet-SUBSTITUA"]
+lambda_security_group_ids = ["sg-SUBSTITUA"]
+db_url                    = "jdbc:postgresql://SUBSTITUA:5432/autopecas?sslmode=require"
+db_user                   = "lambda_auth"
+
+# Habilite quando o ingresso Kubernetes estiver disponivel.
+# application_url = "https://api.exemplo.com"
+# Carregue as rotas reais com -var-file=routes/application.json; veja docs/rotas-api-gateway.md.

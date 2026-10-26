@@ -55,4 +55,12 @@ INSERT INTO clientes_pj (id, cnpj, razao_social) VALUES
 ('44444444-4444-4444-4444-444444444444', '11444777000161', 'PJ Inativa Ltda'),
 ('55555555-5555-5555-5555-555555555555', '12ABC34501DE35', 'PJ Alfanumerica Ltda');
 
+CREATE TABLE funcionarios (id UUID PRIMARY KEY, cpf VARCHAR(14) NOT NULL UNIQUE, ativo BOOLEAN NOT NULL);
+-- Permissoes explicitas; o login usa o CPF do cadastro e seu estado ativo.
+CREATE TABLE funcionario_roles (
+    funcionario_id UUID NOT NULL REFERENCES funcionarios(id) ON DELETE CASCADE,
+    role VARCHAR(20) NOT NULL CHECK (role IN ('ADMIN','ATENDENTE','MECANICO')),
+    PRIMARY KEY (funcionario_id, role)
+);
+
 COMMIT;
