@@ -60,3 +60,11 @@ if [[ ! -f "$report" ]] ||
     echo "Os seis testes JDBC precisam executar sem skipped." >&2
     exit 1
 fi
+
+staff_report=target/surefire-reports/TEST-br.com.autopecas.infrastructure.persistence.JdbcFuncionarioRepositoryTest.xml
+if [[ ! -f "$staff_report" ]] ||
+   ! grep -Eq 'tests="4"' "$staff_report" ||
+   ! grep -Eq 'skipped="0"' "$staff_report"; then
+    echo "Os quatro testes JDBC de funcionarios precisam executar sem skipped." >&2
+    exit 1
+fi
