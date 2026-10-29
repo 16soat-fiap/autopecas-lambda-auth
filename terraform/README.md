@@ -115,8 +115,10 @@ rotas exigem JWT e escopo api:access. O gateway confere RSA, kid, issuer,
 audience e validade; n?o consulta o status do cliente a cada requisi??o.
 A aplica??o continua respons?vel pela autoriza??o de acesso aos seus recursos.
 
-A integra??o HTTP_PROXY usa origem HTTPS p?blica. Um ingresso privado requer
-VPC Link e listener de load balancer, dependentes da infraestrutura Kubernetes.
+A integra??o HTTP_PROXY aceita duas origens: uma URL HTTPS p?blica
+(application_url) ou, sem ingresso p?blico, o VPC Link e o listener do NLB
+interno do reposit?rio autopecas-infra-k8s (vpc_link_id e
+application_listener_arn, este com o listener do ambiente).
 Antes da entrega, impe?a acesso direto ao ingresso p?blico ou valide o token
 tamb?m na aplica??o. O header Authorization ? encaminhado ? aplica??o;
 o contexto do antigo authorizer Lambda n?o existe mais.

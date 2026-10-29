@@ -138,12 +138,20 @@ resource "aws_apigatewayv2_authorizer" "jwt" {
   depends_on = [terraform_data.discovery_ready]
 }
 
+locals {
+  # Integracao privada: o gateway chega ao NLB interno pelo VPC Link, e o
+  # cluster nao precisa de nenhum ingresso publico que contornaria o authorizer.
+  integracao_privada = var.vpc_link_id != null
+}
+
 resource "aws_apigatewayv2_integration" "application" {
   count                  = length(var.protected_routes) > 0 ? 1 : 0
   api_id                 = aws_apigatewayv2_api.this.id
   integration_type       = "HTTP_PROXY"
   integration_method     = "ANY"
-  integration_uri        = var.application_url
+  connection_type        = local.integracao_privada ? "VPC_LINK" : "INTERNET"
+  connection_id          = local.integracao_privada ? var.vpc_link_id : null
+  integration_uri        = local.integracao_privada ? var.application_listener_arn : var.application_url
   payload_format_version = "1.0"
   timeout_milliseconds   = 30000
 
@@ -153,8 +161,12 @@ resource "aws_apigatewayv2_integration" "application" {
 
   lifecycle {
     precondition {
-      condition     = var.application_url != null
-      error_message = "Informe application_url antes de habilitar rotas protegidas."
+      condition     = (var.application_url != null) != local.integracao_privada
+      error_message = "Informe application_url OU vpc_link_id antes de habilitar rotas protegidas, nao os dois."
+    }
+    precondition {
+      condition     = !local.integracao_privada || var.application_listener_arn != null
+      error_message = "Com vpc_link_id, informe tambem application_listener_arn."
     }
   }
 }

@@ -118,6 +118,47 @@ run "catalog_requires_upstream" {
   expect_failures = [aws_apigatewayv2_integration.application]
 }
 
+run "private_application_via_vpc_link" {
+  command = plan
+  variables {
+    vpc_link_id              = "vlnk-test"
+    application_listener_arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/net/autopecas-nlb/abc/def"
+    protected_routes         = jsondecode(file("routes/application.json")).protected_routes
+  }
+  assert {
+    condition     = aws_apigatewayv2_integration.application[0].connection_type == "VPC_LINK" && aws_apigatewayv2_integration.application[0].connection_id == "vlnk-test"
+    error_message = "Com vpc_link_id, a integracao deve ser privada pelo VPC Link."
+  }
+  assert {
+    condition     = aws_apigatewayv2_integration.application[0].integration_uri == var.application_listener_arn
+    error_message = "A integracao privada deve apontar para o listener do NLB do ambiente."
+  }
+  assert {
+    condition     = alltrue([for route in aws_apigatewayv2_route.protected : route.authorization_type == "JWT"])
+    error_message = "A integracao privada nao dispensa o authorizer."
+  }
+}
+
+run "reject_public_and_private_together" {
+  command = plan
+  variables {
+    application_url          = "https://api.example.com"
+    vpc_link_id              = "vlnk-test"
+    application_listener_arn = "arn:aws:elasticloadbalancing:us-east-1:123456789012:listener/net/autopecas-nlb/abc/def"
+    protected_routes         = ["GET /api/clientes"]
+  }
+  expect_failures = [aws_apigatewayv2_integration.application]
+}
+
+run "reject_vpc_link_without_listener" {
+  command = plan
+  variables {
+    vpc_link_id      = "vlnk-test"
+    protected_routes = ["GET /api/clientes"]
+  }
+  expect_failures = [aws_apigatewayv2_integration.application]
+}
+
 run "staff_login_stays_public" {
   command = plan
   assert {

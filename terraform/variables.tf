@@ -83,13 +83,31 @@ variable "jwt_audience" {
 }
 
 variable "application_url" {
-  description = "URL HTTPS publica do ingresso da aplicacao Kubernetes. Integracao privada requer VPC Link, ainda nao implementado."
+  description = "URL HTTPS publica do ingresso da aplicacao Kubernetes. Alternativa a integracao privada (vpc_link_id + application_listener_arn)."
   type        = string
   default     = null
   nullable    = true
   validation {
     condition     = var.application_url == null ? true : can(regex("^https://[^/]+$", var.application_url))
     error_message = "Use uma origem HTTPS sem caminho nem barra final."
+  }
+}
+
+variable "vpc_link_id" {
+  description = "VPC Link do repositorio autopecas-infra-k8s (output vpc_link_id). Com ele, as rotas protegidas chegam a aplicacao sem ingresso publico."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "application_listener_arn" {
+  description = "Listener do NLB interno para este ambiente (output listener_arns[environment] do autopecas-infra-k8s). Usado junto com vpc_link_id."
+  type        = string
+  default     = null
+  nullable    = true
+  validation {
+    condition     = var.application_listener_arn == null ? true : can(regex("^arn:aws:elasticloadbalancing:[a-z0-9-]+:[0-9]{12}:listener/net/.+$", var.application_listener_arn))
+    error_message = "Informe o ARN de um listener de Network Load Balancer."
   }
 }
 
