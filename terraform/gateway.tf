@@ -145,7 +145,7 @@ locals {
 }
 
 resource "aws_apigatewayv2_integration" "application" {
-  count                  = length(var.protected_routes) > 0 ? 1 : 0
+  count                  = length(var.protected_routes) > 0 || var.public_health_check ? 1 : 0
   api_id                 = aws_apigatewayv2_api.this.id
   integration_type       = "HTTP_PROXY"
   integration_method     = "ANY"
@@ -179,4 +179,16 @@ resource "aws_apigatewayv2_route" "protected" {
   authorizer_id        = aws_apigatewayv2_authorizer.jwt.id
   authorization_scopes = ["api:access"]
   target               = "integrations/${aws_apigatewayv2_integration.application[0].id}"
+}
+
+# Unica rota da aplicacao sem authorizer, e so quando pedida: o monitor de
+# disponibilidade precisa ver a aplicacao pelo mesmo caminho do cliente
+# (gateway, VPC Link, NLB, pod), sem token. Rota exata, nunca um prefixo: o resto
+# do Actuator continua inalcancavel pelo gateway.
+resource "aws_apigatewayv2_route" "health" {
+  count              = var.public_health_check ? 1 : 0
+  api_id             = aws_apigatewayv2_api.this.id
+  route_key          = "GET /actuator/health"
+  authorization_type = "NONE"
+  target             = "integrations/${aws_apigatewayv2_integration.application[0].id}"
 }
