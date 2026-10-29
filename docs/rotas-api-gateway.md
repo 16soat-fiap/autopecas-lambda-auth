@@ -118,8 +118,18 @@ Veja [login de funcionários](login-funcionarios.md) para migrations, grants e b
 Esta configuração suporta uma origem HTTPS pública sem caminho ou barra final.
 Preencha application_url no tfvars local, por exemplo https://api.exemplo.com,
 e revise os IDs da rede e os segredos. Não use localhost nem endereço fictício
-em um apply. Para ingresso privado, falta implementar VPC Link e listener;
-o catálogo de rotas pode ser reutilizado.
+em um apply.
+
+Para ingresso privado, sem URL pública, informe no lugar de application_url
+os outputs do repositório autopecas-infra-k8s: vpc_link_id e
+application_listener_arn = listener_arns["homologacao"] (ou ["producao"]).
+O catálogo de rotas é o mesmo nos dois modos.
+
+Com public_health_check = true, o gateway expõe também GET /actuator/health,
+sem JWT, pela mesma integração: é o que o monitor de disponibilidade do New
+Relic consulta, pelo mesmo caminho do cliente. É a única rota da aplicação sem
+authorizer, e exata — o resto do Actuator continua inalcançável pelo gateway.
+A aplicação responde só {"status":"UP"} ou DOWN, sem detalhes.
 
 Na raiz do repositório, com o backend de homologação já configurado:
 
