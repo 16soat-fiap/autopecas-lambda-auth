@@ -111,6 +111,12 @@ variable "application_listener_arn" {
   }
 }
 
+variable "public_health_check" {
+  description = "Expoe GET /actuator/health sem JWT, pela mesma integracao da aplicacao, para o monitor de disponibilidade. A aplicacao responde apenas UP ou DOWN, sem detalhes."
+  type        = bool
+  default     = false
+}
+
 variable "protected_routes" {
   description = "Rotas explicitas da aplicacao. Catalogo revisado em routes/application.json; nao e carregado automaticamente."
   type        = set(string)
