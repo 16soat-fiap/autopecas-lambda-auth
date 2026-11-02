@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, homologacao]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Testar aplicação e Terraform
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      TF_IN_AUTOMATION: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.10.5'
+
+      - name: Testes unitários e de integração
+        run: bash scripts/test-integration.sh
+
+      - name: Formatação Terraform
+        working-directory: terraform
+        run: terraform fmt -check -recursive -diff
+
+      - name: Inicializar Terraform sem backend
+        run: terraform -chdir=terraform init -backend=false -input=false
+
+      - name: Validar Terraform
+        run: terraform -chdir=terraform validate
+
+      - name: Testes Terraform
+        run: terraform -chdir=terraform test

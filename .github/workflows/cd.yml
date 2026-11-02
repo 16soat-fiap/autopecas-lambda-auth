@@ -1,0 +1,104 @@
+name: CD
+
+on:
+  push:
+    branches: [main, homologacao]
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - 'terraform/**'
+      - 'scripts/test-integration.sh'
+      - '.github/workflows/cd.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lambda-auth-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy (${{ github.ref_name == 'main' && 'producao' || 'homologacao' }})
+    if: vars.AWS_CD_HABILITADO == 'true' && (github.ref_name == 'main' || github.ref_name == 'homologacao')
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'producao' || 'homologacao' }}
+    timeout-minutes: 45
+
+    env:
+      AMBIENTE: ${{ github.ref_name == 'main' && 'producao' || 'homologacao' }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+      AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TF_IN_AUTOMATION: true
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      TF_VAR_environment: ${{ github.ref_name == 'main' && 'producao' || 'homologacao' }}
+      TF_VAR_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+      TF_VAR_lambda_execution_role_arn: ${{ vars.TF_VAR_LAMBDA_EXECUTION_ROLE_ARN }}
+      TF_VAR_lambda_subnet_ids: ${{ vars.TF_VAR_LAMBDA_SUBNET_IDS }}
+      TF_VAR_lambda_security_group_ids: ${{ vars.TF_VAR_LAMBDA_SECURITY_GROUP_IDS }}
+      TF_VAR_db_url: ${{ secrets.TF_VAR_DB_URL }}
+      TF_VAR_db_user: ${{ vars.TF_VAR_DB_USER }}
+      TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+      TF_VAR_jwt_private_key: ${{ secrets.TF_VAR_JWT_PRIVATE_KEY }}
+      TF_VAR_jwt_audience: ${{ vars.TF_VAR_JWT_AUDIENCE || 'autopecas-api' }}
+      APPLICATION_URL: ${{ vars.TF_VAR_APPLICATION_URL }}
+      VPC_LINK_ID: ${{ vars.TF_VAR_VPC_LINK_ID }}
+      APPLICATION_LISTENER_ARN: ${{ vars.TF_VAR_APPLICATION_LISTENER_ARN }}
+      PUBLIC_HEALTH_CHECK: ${{ vars.TF_VAR_PUBLIC_HEALTH_CHECK }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.10.5'
+          terraform_wrapper: false
+
+      - name: Testes unitários e de integração
+        run: bash scripts/test-integration.sh
+
+      - name: Conferir credenciais AWS
+        run: |
+          if ! aws sts get-caller-identity --query Arn --output text; then
+            echo "::error::Credencial inválida ou expirada. Inicie uma sessão no Learner Lab e atualize AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY e AWS_SESSION_TOKEN."
+            exit 1
+          fi
+
+      - name: Inicializar Terraform
+        run: |
+          terraform -chdir=terraform init -reconfigure -input=false \
+            -backend-config="bucket=$TF_STATE_BUCKET" \
+            -backend-config="key=lambda/$AMBIENTE/terraform.tfstate" \
+            -backend-config="region=$AWS_REGION" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+
+      - name: Planejar e aplicar deploy
+        run: |
+          if [[ -n "$APPLICATION_URL" ]]; then
+            export TF_VAR_application_url="$APPLICATION_URL"
+          fi
+          if [[ -n "$VPC_LINK_ID" ]]; then
+            export TF_VAR_vpc_link_id="$VPC_LINK_ID"
+          fi
+          if [[ -n "$APPLICATION_LISTENER_ARN" ]]; then
+            export TF_VAR_application_listener_arn="$APPLICATION_LISTENER_ARN"
+          fi
+          if [[ -n "$PUBLIC_HEALTH_CHECK" ]]; then
+            export TF_VAR_public_health_check="$PUBLIC_HEALTH_CHECK"
+          fi
+
+          terraform -chdir=terraform plan -input=false \
+            -var-file=routes/application.json \
+            -out="$RUNNER_TEMP/$AMBIENTE.tfplan"
+          terraform -chdir=terraform apply -input=false -auto-approve \
+            "$RUNNER_TEMP/$AMBIENTE.tfplan"
