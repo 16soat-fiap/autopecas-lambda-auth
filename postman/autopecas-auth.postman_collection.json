@@ -1,0 +1,179 @@
+{
+  "info": {
+    "name": "Autopeças — autenticação Lambda e Gateway",
+    "description": "Configure base_url com o output Terraform api_url, sem barra final. Preencha documentos e cliente_id de cadastros existentes. Logins bem-sucedidos salvam access_token nas variáveis da coleção. Healthcheck e rota de negócio dependem da configuração do Gateway e da aplicação.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cliente_documento",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "funcionario_cpf",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cliente_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Login de cliente por CPF/CNPJ",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"documento\":\"{{cliente_documento}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{base_url}}/auth"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const body = pm.response.json();",
+              "    pm.test('Resposta contém JWT', function () {",
+              "        pm.expect(body.token).to.be.a('string').and.not.empty;",
+              "    });",
+              "    if (typeof body.token === 'string' && body.token.length > 0) {",
+              "        pm.collectionVariables.set('access_token', body.token);",
+              "    }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login de funcionário por CPF",
+      "request": {
+        "method": "POST",
+        "auth": {
+          "type": "noauth"
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"cpf\":\"{{funcionario_cpf}}\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{base_url}}/auth/funcionarios"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const body = pm.response.json();",
+              "    pm.test('Resposta contém JWT', function () {",
+              "        pm.expect(body.token).to.be.a('string').and.not.empty;",
+              "    });",
+              "    if (typeof body.token === 'string' && body.token.length > 0) {",
+              "        pm.collectionVariables.set('access_token', body.token);",
+              "    }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Discovery público",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/.well-known/openid-configuration",
+        "description": "Metadados do emissor, sem consulta ao banco.",
+        "auth": {
+          "type": "noauth"
+        }
+      }
+    },
+    {
+      "name": "JWKS público",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/.well-known/jwks.json",
+        "description": "Chave pública RSA usada pelos validadores.",
+        "auth": {
+          "type": "noauth"
+        }
+      }
+    },
+    {
+      "name": "Consultar cliente — exemplo de rota protegida",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/api/clientes/{{cliente_id}}",
+        "description": "Exige rota integrada, access_token e cliente_id. Clientes só acessam o próprio cadastro; funcionários dependem de roles."
+      }
+    },
+    {
+      "name": "Healthcheck público — opcional",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/actuator/health",
+        "description": "Disponível apenas quando public_health_check=true; usa a integração com a aplicação.",
+        "auth": {
+          "type": "noauth"
+        }
+      }
+    }
+  ]
+}
